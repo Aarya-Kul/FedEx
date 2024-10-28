@@ -17,24 +17,35 @@ class DeviceAction(Enum):
 # Signals so that devices know when to run
 device_signals = [DeviceAction.WAIT] * NUM_DEVICES
 
+# Enforce ordering constraints for devices
+device_locks = [threading.Lock()] * NUM_DEVICES
+device_cvs = [threading.Condition(lock=device_locks[i]) for i in range(NUM_DEVICES)]
+
+# Allow manager to sleep while clients are running
+manager_lock = threading.Lock()
+manager_cv = threading.Condition(lock=manager_lock)
+
 # Devices add themselves to this set when they are done running
 devices_done_running = set()
 
 # Function to represent work done by worker threads
-def device(device_id, task_queue):
-    while device_signals[device_id] == DeviceAction.WAIT:
+def device(device_id):
+    device_cvs[device_id].acquire()
+    while device_signals[device_id] != DeviceAction.STOP:
 
-        if device_signals[device_id] == DeviceAction.RUN:
-            print("TODO: implement device model")
-            # Run epoch on device model
-            # TODO: implement device model
+        while device_signals[device_id] == DeviceAction.WAIT:
+            device_cvs[device_id].wait()
 
-        # Avoid busy waiting
-        time.sleep(0.1)
+        print("TODO: implement device model")
+
+        manager_cv.notify()
+
+    device_cvs[device_id].release()
 
 
 # Main thread logic for assigning tasks
 def main():
+    manager_cv.acquire()
     # Create and start worker threads
     workers = []
     for i in range(NUM_DEVICES):
@@ -49,10 +60,11 @@ def main():
         # Signal devices to run
         for device in devices_to_run:
             device_signals[device] = DeviceAction.RUN
-        
+            device_cvs[device].notify()
+
         # Wait for devices to be done running
         while len(devices_done_running) != len(devices_to_run):
-            time.sleep(0.1)
+            manager_cv.wait()
         
         # Aggregate model results
         # TODO: define aggregation method
@@ -67,10 +79,12 @@ def main():
 
     # TODO: save model weights to file for future use
     print("Training complete.")
+    manager_cv.release()
 
 
 # TODO: Define
 def convergence_criteria():
     return False
 
-main()
+if __name__ == '__main__':
+    main()
