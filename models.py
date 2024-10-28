@@ -11,6 +11,7 @@ class MNISTCNN(nn.Module):
 
         # The paper is not really specific about how the fully connected layers are built
         # I think that kind of makes sense
+        # 28 -> 24 -> 12 -> 8 -> 4
         self.fc1 = nn.Linear(in_features=64 * 4 * 4, out_features=512)
         self.fc2 = nn.Linear(in_features=512, out_features=10) 
 

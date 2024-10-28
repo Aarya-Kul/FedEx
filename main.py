@@ -2,11 +2,16 @@ import threading
 import time
 from enum import Enum
 import numpy as np
+import models
 
 
 # Define the number of device threads
 NUM_DEVICES = 16
+
+# Define constants for federated learning
+# TODO: Add required constants
 DEVICES_PER_EPOCH = 4
+LOCAL_MINIBATCH = 10
 
 class DeviceAction(Enum):
     RUN: int = 0
@@ -18,7 +23,7 @@ class DeviceAction(Enum):
 device_signals = [DeviceAction.WAIT] * NUM_DEVICES
 
 # Enforce ordering constraints for devices
-device_locks = [threading.Lock()] * NUM_DEVICES
+device_locks = [threading.Lock() for _ in range(NUM_DEVICES)]
 device_cvs = [threading.Condition(lock=device_locks[i]) for i in range(NUM_DEVICES)]
 
 # Allow manager to sleep while clients are running
@@ -28,6 +33,9 @@ manager_cv = threading.Condition(lock=manager_lock)
 # Devices add themselves to this set when they are done running
 devices_done_running = set()
 
+# Global server model
+global_model = models.MNISTCNN()
+
 # Function to represent work done by worker threads
 def device(device_id):
     device_cvs[device_id].acquire()
@@ -36,8 +44,10 @@ def device(device_id):
         while device_signals[device_id] == DeviceAction.WAIT:
             device_cvs[device_id].wait()
 
-        print("TODO: implement device model")
+        print("TODO: implement device model training")
 
+        devices_done_running.add(device_id)
+        device_signals[device_id] = DeviceAction.WAIT
         manager_cv.notify()
 
     device_cvs[device_id].release()
@@ -52,10 +62,11 @@ def main():
         thread = threading.Thread(target=device, args=(i, device_signals))
         thread.start()
         workers.append(thread)
-    
+
     # Main training loop
     while not convergence_criteria():
         devices_to_run = np.random.choice(range(NUM_DEVICES), size=DEVICES_PER_EPOCH, replace=False)
+        devices_done_running.clear()
 
         # Signal devices to run
         for device in devices_to_run:
@@ -65,7 +76,7 @@ def main():
         # Wait for devices to be done running
         while len(devices_done_running) != len(devices_to_run):
             manager_cv.wait()
-        
+
         # Aggregate model results
         # TODO: define aggregation method
     
@@ -85,6 +96,21 @@ def main():
 # TODO: Define
 def convergence_criteria():
     return False
+
+
+# TODO: Define
+def train(device_id):
+    weight = []
+    loss = []
+
+    # We can access a model's weights with model.state_dict()
+    # We also need to save the loss to plot it
+    return weight, loss
+
+
+# TODO: Define
+def fed_avg():
+    return []
 
 if __name__ == '__main__':
     main()
