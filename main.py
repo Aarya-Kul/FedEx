@@ -3,6 +3,9 @@ import time
 from enum import Enum
 import numpy as np
 import models
+import copy
+import torch
+from collections import OrderedDict
 
 
 # Define the number of device threads
@@ -12,6 +15,8 @@ NUM_DEVICES = 16
 # TODO: Add required constants
 DEVICES_PER_EPOCH = 4
 LOCAL_MINIBATCH = 10
+LOCAL_EPOCHS = 1000
+LEARNING_RATE = 0.1
 
 class DeviceAction(Enum):
     RUN: int = 0
@@ -21,6 +26,9 @@ class DeviceAction(Enum):
 
 # Signals so that devices know when to run
 device_signals = [DeviceAction.WAIT] * NUM_DEVICES
+
+# List to hold the device weights and loss device_id -> (device_weight, device_loss)
+devices_training_data = [] * NUM_DEVICES
 
 # Enforce ordering constraints for devices
 device_locks = [threading.Lock() for _ in range(NUM_DEVICES)]
@@ -35,6 +43,8 @@ devices_done_running = set()
 
 # Global server model
 global_model = models.MNISTCNN()
+optimizer = torch.optim.Adam(global_model.parameters, lr=LEARNING_RATE)
+loss_function = torch.nn.CrossEntropyLoss()
 
 # Function to represent work done by worker threads
 def device(device_id):
@@ -44,7 +54,7 @@ def device(device_id):
         while device_signals[device_id] == DeviceAction.WAIT:
             device_cvs[device_id].wait()
 
-        print("TODO: implement device model training")
+        devices_training_data[device_id] = train(device_id)
 
         devices_done_running.add(device_id)
         device_signals[device_id] = DeviceAction.WAIT
@@ -77,8 +87,10 @@ def main():
         while len(devices_done_running) != len(devices_to_run):
             manager_cv.wait()
 
-        # Aggregate model results
-        # TODO: define aggregation method
+        # Update global model to reflect client updates
+        global_model.load_state_dict(fed_avg())
+
+        # TODO: handle graphs
     
     # Signal all devices to exit
     for i in range(NUM_DEVICES):
@@ -98,19 +110,48 @@ def convergence_criteria():
     return False
 
 
-# TODO: Define
+# Client trainning loop
 def train(device_id):
-    weight = []
-    loss = []
+    local_model = copy.deepcopy(global_model)
+    dataloader = []
+    average_loss = -1
+    
+    # TODO: handle batch sizes, dependent on dataloader structure - Abhi?
+    for _ in range(LOCAL_EPOCHS):
+        total_loss = 0
+        for inputs, labels in dataloader[device_id]['train']:
+            inputs, labels = input.to('cpu'), labels.to('cpu')
+
+            optimizer.zero_grad()
+            predictions = local_model(inputs)
+
+            curr_loss = loss_function(predictions, labels)
+            curr_loss.backward()
+
+            optimizer.step()
+
+            total_loss += curr_loss.item()
+
+        average_loss = total_loss / len(dataloader[device_id]['train'])
+    
 
     # We can access a model's weights with model.state_dict()
     # We also need to save the loss to plot it
-    return weight, loss
+    assert(average_loss != -1)
+    return local_model.state_dict(), average_loss
 
 
-# TODO: Define
+# Return the state dictionary of the global model after training
 def fed_avg():
-    return []
+    first_weight = devices_training_data[0][0]
+    
+    avg_weights = OrderedDict()
+    for key in first_weight.keys():
+        curr_weights = [state[key] for state, _ in devices_training_data]
+        stacked_weights = torch.stack(curr_weights)
+        avg_weights[key] = torch.mean(stacked_weights)
+
+    return avg_weights
 
 if __name__ == '__main__':
     main()
