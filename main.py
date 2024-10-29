@@ -54,7 +54,7 @@ def device(device_id):
         while device_signals[device_id] == DeviceAction.WAIT:
             device_cvs[device_id].wait()
 
-        devices_training_data[device_id], avg_loss = train(device_id)
+        devices_training_data[device_id]= train(device_id)
 
         devices_done_running.add(device_id)
         device_signals[device_id] = DeviceAction.WAIT
