@@ -4,20 +4,17 @@ from collections import defaultdict
 from torch.utils.data import DataLoader, Dataset, Subset
 import numpy as np
 import random
+from main import NUM_DEVICES
 
-# or any number of clients
-N_CLIENTS = 16  
-EXAMPLES_PER_CLIENT = 3750
-LABELS_PER_CLIENT = 2
 
 transform = transforms.Compose([transforms.ToTensor()])
-# 60,000 pictures
+# 60,000 pictures 
 train_mnist_data = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 # 10,000 pictures
 test_mnist_data = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
 # Divide each label group into chunks of unique examples
-label_data = defaultdict(list)
+"""label_data = defaultdict(list)
 for idx, (_, label) in enumerate(train_mnist_data):
     label_data[label].append(idx)
 
@@ -26,7 +23,7 @@ examples_per_label_group = EXAMPLES_PER_CLIENT // LABELS_PER_CLIENT
 
 for client in range(N_CLIENTS):
 
-    chosen_labels = random.sample(range(10), labels_per_client)
+    chosen_labels = random.sample(range(10), LABELS_PER_CLIENT)
     client_indices = []
 
     for label in chosen_labels:
@@ -34,12 +31,21 @@ for client in range(N_CLIENTS):
         label_data[label] = label_data[label][examples_per_label_group:]
         client_indices.extend(selected_indices)
 
-    client_data_indices.append(client_indices)
+    client_data_indices.append(client_indices)"""
 
 
 
 
 #abhi's stuff
+
+def split_indices(num_samples, val_ratio=0.2):
+    """Splits indices into training and validation sets."""
+    indices = np.random.permutation(num_samples)
+    val_size = int(num_samples * val_ratio)
+    val_indices = indices[:val_size]
+    train_indices = indices[val_size:]
+    return train_indices, val_indices
+
 # Create IID Split
 def create_iid_split(data, num_clients=100, examples_per_client=600):
     num_samples = len(data)
@@ -78,10 +84,20 @@ def create_non_iid_split(data, num_clients=100, shards_per_client=2, shard_size=
     return client_data
 
 # Generate splits
-train_indices, val_indices = split_indices(len(mnist_data))
-train_data = [(mnist_data[i][0], mnist_data[i][1]) for i in train_indices]
-val_data = [(mnist_data[i][0], mnist_data[i][1]) for i in val_indices]
+train_indices, val_indices = split_indices(len(train_mnist_data), 0.15)
+train_data = [(train_mnist_data[i][0], train_mnist_data[i][1]) for i in train_indices]
+val_data = [(train_mnist_data[i][0], train_mnist_data[i][1]) for i in val_indices]
 
 # Create splits for training data
-iid_train_split = create_iid_split(train_data)
+iid_train_split = create_iid_split(train_data, NUM_DEVICES)
 non_iid_train_split = create_non_iid_split(train_data)
+
+
+
+
+
+class MNISTDataloader(DataLoader):
+    def __init__(self):
+        # figure that shit out
+    
+    

@@ -8,15 +8,15 @@ import torch
 from collections import OrderedDict
 
 
-# Define the number of device threads
-NUM_DEVICES = 16
 
 # Define constants for federated learning
-# TODO: Add required constants
+NUM_DEVICES = 16
 DEVICES_PER_EPOCH = 4
 LOCAL_MINIBATCH = 10
 LOCAL_EPOCHS = 1000
 LEARNING_RATE = 0.1
+EXAMPLES_PER_CLIENT = 3750
+LABELS_PER_CLIENT = 2
 
 class DeviceAction(Enum):
     RUN: int = 0
@@ -142,16 +142,28 @@ def train(device_id):
 
 
 # Return the state dictionary of the global model after training
-def fed_avg():
+def fed_avg(weight_log = False):
+    DUMMY_WEIGHTS = (np.random.rand(NUM_DEVICES) + 1) * 42 # list of data sizes for each client (>1)
+    
+    # take log of weights if testing extension 2
+    if weight_log:
+        DUMMY_WEIGHTS = np.log(DUMMY_WEIGHTS)
+
     first_weight = devices_training_data[0][0]
     
     avg_weights = OrderedDict()
     for key in first_weight.keys():
-        curr_weights = [state[key] for state, _ in devices_training_data]
+        curr_weights = [DUMMY_WEIGHTS[i] * np.array(state[key]) for i, (state, _) in enumerate(devices_training_data)]
         stacked_weights = torch.stack(curr_weights)
         avg_weights[key] = torch.mean(stacked_weights)
 
     return avg_weights
+
+
+# EXTENSION 2: 
+def fed_avg_log():
+    fed_avg(weight_log=True)
+    
 
 if __name__ == '__main__':
     main()
