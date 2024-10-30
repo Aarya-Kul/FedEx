@@ -1,0 +1,50 @@
+from enum import Enum
+from server import Server
+import threading
+
+class DeviceAction(Enum):
+    RUN: int = 0
+    WAIT: int = 1
+    STOP: int = 2
+
+class Client():
+    def __init__(self, client_id: int, server: Server):
+        self.client_id = client_id
+        self.server = server
+
+        self.client_cv = server.get_client_cv(client_id)
+        self.server_cv = server.get_server_cv()
+
+        self.status = DeviceAction.WAIT
+
+        self.thread = threading.Thread(target=self.start())
+
+
+    def start(self):
+        self.client_cv.acquire()
+        while self.status != DeviceAction.STOP:
+
+            while self.status == DeviceAction.WAIT:
+                self.client_cv.wait()
+
+            # Let server know that the client is done running
+            self.server.send_client_result(self.device_id, train(self.device_id))
+
+            self.status = DeviceAction.WAIT
+            self.server_cv.notify()
+
+        self.client_cv.release()
+
+
+    def kill(self):
+        self.status = DeviceAction.STOP
+        return
+
+
+    def run_training(self):
+        self.status = DeviceAction.RUN
+        return
+
+
+    def join(self):
+        self.thread.join()
