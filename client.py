@@ -20,7 +20,7 @@ class Client():
 
         self.thread = threading.Thread(target=self.start())
 
-        self.model: MNISTCNN
+        self.model: MNISTCNN = MNISTCNN()
 
 
     def start(self):
