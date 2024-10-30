@@ -77,5 +77,5 @@ class Server():
 
 
     # EXTENSION 2: 
-    def fed_avg_log(self, ):
+    def fed_avg_log(self):
         self.fed_avg(weight_log=True)
