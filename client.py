@@ -1,5 +1,6 @@
 from enum import Enum
 from server import Server
+from models import MNISTCNN
 import threading
 
 class DeviceAction(Enum):
@@ -12,12 +13,14 @@ class Client():
         self.client_id = client_id
         self.server = server
 
-        self.client_cv = server.get_client_cv(client_id)
+        self.client_cv = threading.Condition(threading.Lock())
         self.server_cv = server.get_server_cv()
 
         self.status = DeviceAction.WAIT
 
         self.thread = threading.Thread(target=self.start())
+
+        self.model: MNISTCNN
 
 
     def start(self):
@@ -28,7 +31,7 @@ class Client():
                 self.client_cv.wait()
 
             # Let server know that the client is done running
-            self.server.send_client_result(self.device_id, train(self.device_id))
+            self.server.send_client_result(self.client_id, self.model.train(self.client_id))
 
             self.status = DeviceAction.WAIT
             self.server_cv.notify()
@@ -38,12 +41,18 @@ class Client():
 
     def kill(self):
         self.status = DeviceAction.STOP
+        self.client_cv.notify()
         return
 
 
     def run_training(self):
         self.status = DeviceAction.RUN
+        self.client_cv.notify()
         return
+
+
+    def send_global_model(self, model: MNISTCNN):
+        self.model = model
 
 
     def join(self):
