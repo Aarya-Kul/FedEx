@@ -9,7 +9,7 @@ import copy
 from main import model_constants
 
 class Server():
-    def __init__(self):
+    def __init__(self, num_rounds=1000):
         self.num_clients: int = model_constants["NUM_DEVICES"]
         self.clients: list[Client] = [Client(i, self) for i in range(self.num_clients)]
 
@@ -20,6 +20,8 @@ class Server():
 
         self.global_model: MNISTCNN = MNISTCNN()
 
+        self.num_rounds = num_rounds
+
 
     def get_server_cv(self):
         return self.server_cv
@@ -28,12 +30,19 @@ class Server():
     def send_client_result(self, device_id: int, client_result: tuple):
         self.clients_training_data[device_id] = client_result
         self.devices_done_running.add(device_id)
+    
+    def convergence_criteria(self):
+        # Note: could experiment with stopping when the model reaches a certain accuracy
+        self.num_rounds -= 1
+        if self.num_rounds <= 0:
+            return True
+        return False
 
 
     def start(self):
         # Main training loop
         self.server_cv.acquire()
-        while not self.global_model.convergence_criteria():
+        while not self.convergence_criteria():
             devices_to_run = np.random.choice(range(self.num_clients), size=self.num_clients, replace=False)
             self.devices_done_running.clear()
 

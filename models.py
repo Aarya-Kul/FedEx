@@ -39,10 +39,6 @@ class MNISTCNN(nn.Module):
         output = F.softmax(x, dim=1)
 
         return output
-
-
-    def convergence_criteria(self):
-        return False
     
 
     def train(self, client_id):
