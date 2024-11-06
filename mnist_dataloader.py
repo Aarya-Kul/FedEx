@@ -117,7 +117,7 @@ class MNISTDataloader(DataLoader):
         return DataLoader(self.val_data, batch_size=batch_size, shuffle=shuffle)
 
 
-num_clients = 20
+num_clients = 80
 batch_size = 32
 dataloader = MNISTDataloader(dataset=train_mnist_data, num_clients=num_clients, is_iid=True)
 
