@@ -2,7 +2,16 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from main import model_constants
+# Define constants for federated learning
+model_constants = {
+    "NUM_DEVICES": 16,
+    "DEVICES_PER_EPOCH": 4,
+    "LOCAL_MINIBATCH": 10,
+    "LOCAL_EPOCHS": 1000,
+    "LEARNING_RATE": 0.1,
+    "EXAMPLES_PER_CLIENT": 3750,
+    "LABELS_PER_CLIENT": 2
+}
 
 class MNISTCNN(nn.Module):
     def __init__(self):

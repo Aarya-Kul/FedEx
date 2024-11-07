@@ -1,25 +1,12 @@
-import threading
-import time
+# import threading
+# import time
 from enum import Enum
-import numpy as np
-import models
-import copy
-import torch
-from collections import OrderedDict
+# import numpy as np
+# import models
+# import copy
+# import torch
+# from collections import OrderedDict
 from server import Server
-
-
-
-# Define constants for federated learning
-model_constants = {
-    "NUM_DEVICES": 16,
-    "DEVICES_PER_EPOCH": 4,
-    "LOCAL_MINIBATCH": 10,
-    "LOCAL_EPOCHS": 1000,
-    "LEARNING_RATE": 0.1,
-    "EXAMPLES_PER_CLIENT": 3750,
-    "LABELS_PER_CLIENT": 2
-}
 
 class DeviceAction(Enum):
     RUN: int = 0

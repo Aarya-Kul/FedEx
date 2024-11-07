@@ -1,5 +1,5 @@
 from enum import Enum
-from server import Server
+# from server import Server
 from models import MNISTCNN
 import threading
 
@@ -9,7 +9,7 @@ class DeviceAction(Enum):
     STOP: int = 2
 
 class Client():
-    def __init__(self, client_id: int, server: Server):
+    def __init__(self, client_id: int, server):
         self.client_id = client_id
         self.server = server
 

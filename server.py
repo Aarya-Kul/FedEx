@@ -1,12 +1,10 @@
 from client import Client
-from models import MNISTCNN
+from models import MNISTCNN, model_constants
 import numpy as np
 import threading
 from collections import OrderedDict
 import torch
 import copy
-
-from main import model_constants
 
 class Server():
     def __init__(self, num_rounds=1000):

@@ -1,10 +1,10 @@
 import torch
 from torchvision import datasets, transforms
 from collections import defaultdict
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader
 import numpy as np
-import random
-from main import NUM_DEVICES
+# import random
+# from main import NUM_DEVICES
 
 
 transform = transforms.Compose([transforms.ToTensor()])
