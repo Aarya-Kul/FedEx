@@ -1,5 +1,6 @@
 from enum import Enum
-from server import Server
+
+from torch.utils.data import DataLoader
 from models import MNISTCNN
 import threading
 
@@ -9,7 +10,7 @@ class DeviceAction(Enum):
     STOP: int = 2
 
 class Client():
-    def __init__(self, client_id: int, server: Server):
+    def __init__(self, client_id: int, server, train_dataloader: DataLoader):
         self.client_id = client_id
         self.server = server
 
@@ -22,6 +23,8 @@ class Client():
 
         self.model: MNISTCNN = MNISTCNN()
 
+        self.train_dataloader = train_dataloader
+
 
     def start(self):
         self.client_cv.acquire()
@@ -29,9 +32,10 @@ class Client():
 
             while self.status == DeviceAction.WAIT:
                 self.client_cv.wait()
-
+            
             # Let server know that the client is done running
-            self.server.send_client_result(self.client_id, self.model.train(self.client_id))
+            print(f"Client ${self.client_id} is training.")
+            self.server.send_client_result(self.client_id, self.model.train_model(self.train_dataloader))
 
             self.status = DeviceAction.WAIT
             self.server_cv.notify()

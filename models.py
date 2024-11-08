@@ -1,11 +1,10 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-
-from main import model_constants
+from torch.utils.data import DataLoader
 
 class MNISTCNN(nn.Module):
-    def __init__(self):
+    def __init__(self, model_constants):
         super(MNISTCNN, self).__init__()
 
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5)
@@ -41,15 +40,15 @@ class MNISTCNN(nn.Module):
         return output
     
 
-    def train(self, client_id):
-        dataloader = []
+    def train_model(self, train_dataloader: DataLoader):
+        print("Training model within model class")
         average_loss = -1
-        
-        # TODO: handle batch sizes, dependent on dataloader structure - Abhi?
-        for _ in range(self.local_epochs):
+
+        self.train()
+        for epoch in range(self.local_epochs):                
             total_loss = 0
-            for inputs, labels in dataloader[client_id]['train']:
-                inputs, labels = input.to('cpu'), labels.to('cpu')
+            for inputs, labels in train_dataloader:
+                inputs, labels = inputs.to('cpu'), labels.to('cpu')
 
                 self.optimizer.zero_grad()
                 predictions = self(inputs)
@@ -61,10 +60,40 @@ class MNISTCNN(nn.Module):
 
                 total_loss += curr_loss.item()
 
-            average_loss = total_loss / len(dataloader[client_id]['train'])
-        
+            average_loss = total_loss / len(train_dataloader)
+            # Print statistics every 100 batches
+            if epoch % 10 == 0:
+                print(f'Epoch [{epoch}/{self.local_epochs}], Loss: {average_loss:.4f}')
+
 
         # We can access a model's weights with model.state_dict()
         # We also need to save the loss to plot it
         assert(average_loss != -1)
         return self.state_dict(), average_loss
+
+
+    # def test(self, test_dataloader: DataLoader):
+    #     average_loss = -1
+        
+    #     for _ in range(self.local_epochs):
+    #         total_loss = 0
+    #         for inputs, labels in test_dataloader:
+    #             inputs, labels = inputs.to('cpu'), labels.to('cpu')
+
+    #             self.optimizer.zero_grad()
+    #             predictions = self(inputs)
+
+    #             curr_loss = self.loss_function(predictions, labels)
+    #             curr_loss.backward()
+
+    #             self.optimizer.step()
+
+    #             total_loss += curr_loss.item()
+
+    #         average_loss = total_loss / len(train_dataloader)
+
+
+    #     # We can access a model's weights with model.state_dict()
+    #     # We also need to save the loss to plot it
+    #     assert(average_loss != -1)
+    #     return self.state_dict(), average_loss

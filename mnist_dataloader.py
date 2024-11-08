@@ -1,10 +1,8 @@
 import torch
 from torchvision import datasets, transforms
 from collections import defaultdict
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader
 import numpy as np
-import random
-from main import NUM_DEVICES
 
 
 transform = transforms.Compose([transforms.ToTensor()])
@@ -117,14 +115,14 @@ class MNISTDataloader(DataLoader):
         return DataLoader(self.val_data, batch_size=batch_size, shuffle=shuffle)
 
 
-num_clients = 20
-batch_size = 32
-dataloader = MNISTDataloader(dataset=train_mnist_data, num_clients=num_clients, is_iid=True)
+# num_clients = 20
+# batch_size = 32
+# dataloader = MNISTDataloader(dataset=train_mnist_data, num_clients=num_clients, is_iid=True)
 
-# Get a DataLoader for client 0
-client_0_dataloader = dataloader.get_dataloader(client_id=0, batch_size=batch_size)
+# # Get a DataLoader for client 0
+# client_0_dataloader = dataloader.get_dataloader(client_id=0, batch_size=batch_size)
 
-# Get validation DataLoader
-val_dataloader = dataloader.get_val_dataloader(batch_size=batch_size)
+# # Get validation DataLoader
+# val_dataloader = dataloader.get_val_dataloader(batch_size=batch_size)
 
     

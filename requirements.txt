@@ -7,6 +7,6 @@ networkx==3.4.2
 numpy==2.1.2
 pillow==11.0.0
 sympy==1.13.3
-torch==2.2.2
-torchvision==0.17.2
+torch==2.4
+torchvision==0.19
 typing_extensions==4.12.2
