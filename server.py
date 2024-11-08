@@ -8,12 +8,13 @@ import copy
 from mnist_dataloader import MNISTDataloader
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+import sys
 # import pdb
 # pdb.set_trace()
 
 # Define constants for federated learning
 model_constants = {
-    "NUM_DEVICES": 16,
+    "NUM_DEVICES": 10,
     "DEVICES_PER_EPOCH": 4,
     "LOCAL_MINIBATCH": 10,
     "LOCAL_EPOCHS": 1000,
@@ -59,6 +60,7 @@ class Server():
                                                     shard_size=shard_size,
                                                     is_iid=False)
 
+        print("Done splitting the data.")
         self.clients = {}
         for client_id in range(self.num_clients):
             new_client = Client(
@@ -91,7 +93,7 @@ class Server():
         self.server_cv.acquire()
         # breakpoint()
         while not self.convergence_criteria():
-            devices_to_run = np.random.choice(range(self.num_clients), size=self.num_clients, replace=False)
+            devices_to_run = np.random.choice(range(self.num_clients), size=model_constants["DEVICES_PER_EPOCH"], replace=False)
             self.devices_done_running.clear()
 
             # Signal devices to run
