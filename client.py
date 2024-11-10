@@ -37,6 +37,10 @@ class Client():
                 print(f"Client {self.client_id} waiting for directions.\n", end="")
                 self.client_cv.wait()
             
+            if self.status == DeviceAction.STOP:
+                self.client_cv.release()
+                return
+            
             # Let server know that the client is done running
             print(f"Client {self.client_id} is training.\n", end="")
             self.server.send_client_result(self.client_id, self.model.train_model(self.train_dataloader, self.client_id))

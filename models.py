@@ -67,9 +67,8 @@ class MNISTCNN(nn.Module):
                 total_loss += curr_loss.item()
 
             average_loss = total_loss / len(train_dataloader)
-            # Print statistics every 10 batches
-            print(f'Client {client_id}: Epoch [{epoch}/{self.local_epochs}], Loss: {average_loss:.4f}\n', end="")
-
+            if epoch % 2 == 0:
+                print(f'Client {client_id}: Epoch [{epoch}/{self.local_epochs}], Loss: {average_loss:.4f}\n', end="")
 
         # We can access a model's weights with model.state_dict()
         # We also need to save the loss to plot it

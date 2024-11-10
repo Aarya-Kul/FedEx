@@ -14,24 +14,24 @@ import sys
 
 # Define constants for federated learning
 model_constants = {
-    "NUM_DEVICES": 10,
-    "DEVICES_PER_EPOCH": 4,
+    "NUM_DEVICES": 100,
+    "DEVICES_PER_EPOCH": 10,
     "LOCAL_MINIBATCH": 10,
-    "LOCAL_EPOCHS": 1000,
-    "LEARNING_RATE": 0.1,
-    "EXAMPLES_PER_CLIENT": 3750,
+    "LOCAL_EPOCHS": 5,
+    "LEARNING_RATE": 0.215,
     "LABELS_PER_CLIENT": 2,
+    "COMMUNICATION_ROUNDS": 100,
     "NUM_CLUSTERS": 3
 }
 
 class Server():
-    def __init__(self, num_rounds=1000, batch_size=32, is_iid=True):
+    def __init__(self, num_rounds=model_constants["COMMUNICATION_ROUNDS"], is_iid=True):
         self.num_clients: int = model_constants["NUM_DEVICES"]
-        self.batch_size = batch_size
+        self.batch_size = model_constants["LOCAL_MINIBATCH"]
 
         self.server_cv: threading.Condition = threading.Condition(threading.Lock())
 
-        self.clients_training_data: list[tuple] = [] * self.num_clients
+        self.clients_training_data: list[tuple] = [(0,0)] * self.num_clients
         self.devices_done_running: set = set()
 
         self.global_model: MNISTCNN = MNISTCNN(model_constants)
@@ -93,6 +93,9 @@ class Server():
         self.server_cv.acquire()
         # breakpoint()
         while not self.convergence_criteria():
+            print("\n\n########################################################################\n", end="")
+            print(f"SERVER INITIALIZING COMMUNICATION ROUND #{100 - self.num_rounds}\n", end="")
+            print("########################################################################\n\n\n", end="")
             devices_to_run = np.random.choice(range(self.num_clients), size=model_constants["DEVICES_PER_EPOCH"], replace=False)
             self.devices_done_running.clear()
 
@@ -106,7 +109,11 @@ class Server():
                 self.server_cv.wait()
 
             # Update global model to reflect client updates
-            self.global_model.load_state_dict(self.fed_avg())
+            avg_model = self.fed_avg(clients=devices_to_run)
+            self.global_model.load_state_dict(avg_model)
+
+            # Test global model performance
+            self.test_model()
 
         self.server_cv.release()
 
@@ -115,25 +122,24 @@ class Server():
             self.clients[i].kill()
             self.clients[i].join()
 
-        self.test_model()
-
 
     # Return the state dictionary of the global model after training
-    def fed_avg(self, weight_log = False):
-        # DUMMY_WEIGHTS = (np.random.rand(self.num_clients) + 1) * 42 # list of data sizes for each client (>1)
+    def fed_avg(self, clients: np.array, weight_log = False):
         weights = np.array([len(cli.train_dataloader) for cli in self.clients.values()])
+        weights = weights / np.sum(weights)
         
         # take log of weights if testing extension 2
         if weight_log:
             weights = np.log(weights)
 
-        first_weight = self.clients_training_data[0][0]
+        # Get training data from a random client to get the keys from state_dict
+        first_weight = self.clients_training_data[clients[0]][0]
         
         avg_weights = OrderedDict()
         for key in first_weight.keys():
-            curr_weights = [weights[i] * np.array(state[key]) for i, (state, _) in enumerate(self.clients_training_data)]
+            curr_weights = [weights[i] * self.clients_training_data[i][0][key] for i in clients]
             stacked_weights = torch.stack(curr_weights)
-            avg_weights[key] = torch.mean(stacked_weights)
+            avg_weights[key] = torch.mean(stacked_weights, dim=0)
 
         return avg_weights
 
@@ -173,22 +179,22 @@ class Server():
         print(f'Accuracy: {accuracy * 100:.2f}%')
 
     def run_clustering(self):
-      # step 1: run current core model and keep track of weights
+        # step 1: run current core model and keep track of weights
 
-      # TODO: run one communication round in the Server
+        # TODO: run one communication round in the Server
 
-      # step 2: cluster weights to find similar clients
-      stored_weights = []
-      for client_weights, _ in enumerate(self.clients_training_data):
-          #stored_weights.append(np.concatenate([weights.flatten() for weights in client_weights.values()]))
+        # step 2: cluster weights to find similar clients
+        stored_weights = []
+        for client_weights, _ in enumerate(self.clients_training_data):
+            #stored_weights.append(np.concatenate([weights.flatten() for weights in client_weights.values()]))
 
-          curr_row = []
-          for weights in client_weights.values():
-              curr_row.extend(weights.flatten().tolist())
-          stored_weights.append(curr_row)
+            curr_row = []
+            for weights in client_weights.values():
+                curr_row.extend(weights.flatten().tolist())
+            stored_weights.append(curr_row)
 
-      feature_matrix = np.array(stored_weights)
+        feature_matrix = np.array(stored_weights)
 
 
-      clustering = SpectralClustering(n_clusters=model_constants["NUM_CLUSTERS"], assign_labels='discretize', random_state=0).fit(feature_matrix)
-      return clustering
+        clustering = SpectralClustering(n_clusters=model_constants["NUM_CLUSTERS"], assign_labels='discretize', random_state=0).fit(feature_matrix)
+        return clustering
