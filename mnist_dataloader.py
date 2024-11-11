@@ -2,9 +2,8 @@ import torch
 from torchvision import datasets, transforms
 from collections import defaultdict
 from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader
 import numpy as np
-# import random
-# from main import NUM_DEVICES
 
 
 transform = transforms.Compose([transforms.ToTensor()])
@@ -28,11 +27,7 @@ def split_indices(num_samples, val_ratio=0.2):
 def create_iid_split(data, num_clients=100, examples_per_client=600):
     num_samples = len(data)
     indices = np.random.permutation(num_samples)
-    client_data = {i: [] for i in range(num_clients)}
-    
-    for i in range(num_samples):
-        client_id = i // examples_per_client
-        client_data[client_id].append(indices[i])
+    client_data = np.array_split(indices, num_clients)
 
     return client_data
 
@@ -81,6 +76,7 @@ class MNISTDataloader(DataLoader):
 
         # Split dataset into train and validation sets
         self.train_indices, self.val_indices = split_indices(len(self.dataset), self.val_ratio)
+        # self.train_indices, self.val_indices = split_indices(10000, self.val_ratio)
         self.train_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.train_indices]
         self.val_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.val_indices]
 
@@ -117,14 +113,14 @@ class MNISTDataloader(DataLoader):
         return DataLoader(self.val_data, batch_size=batch_size, shuffle=shuffle)
 
 
-num_clients = 80
-batch_size = 32
-dataloader = MNISTDataloader(dataset=train_mnist_data, num_clients=num_clients, is_iid=True)
+# num_clients = 20
+# batch_size = 32
+# dataloader = MNISTDataloader(dataset=train_mnist_data, num_clients=num_clients, is_iid=True)
 
-# Get a DataLoader for client 0
-client_0_dataloader = dataloader.get_dataloader(client_id=0, batch_size=batch_size)
+# # Get a DataLoader for client 0
+# client_0_dataloader = dataloader.get_dataloader(client_id=0, batch_size=batch_size)
 
-# Get validation DataLoader
-val_dataloader = dataloader.get_val_dataloader(batch_size=batch_size)
+# # Get validation DataLoader
+# val_dataloader = dataloader.get_val_dataloader(batch_size=batch_size)
 
     
