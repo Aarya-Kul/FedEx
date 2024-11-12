@@ -18,10 +18,10 @@ from sklearn.cluster import SpectralClustering
 # Define constants for federated learning
 model_constants = {
     "NUM_DEVICES": 100,
-    "DEVICES_PER_EPOCH": 10,
+    "DEVICES_PER_EPOCH": 25,
     "LOCAL_MINIBATCH": 10,
     "LOCAL_EPOCHS": 5,
-    "LEARNING_RATE": 0.215,
+    "LEARNING_RATE": 0.01,
     "LABELS_PER_CLIENT": 2,
     "COMMUNICATION_ROUNDS": 100,
     "NUM_CLUSTERS": 3
