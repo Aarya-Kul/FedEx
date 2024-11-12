@@ -57,7 +57,7 @@ def create_non_iid_split(data, num_clients=100, shards_per_client=2, shard_size=
     return client_data
 
 class MNISTDataloader(DataLoader):
-    def __init__(self, dataset, num_clients=100, examples_per_client=600, val_ratio=0.2, shard_size=300, is_iid=True):
+    def __init__(self, dataset, num_clients=100, examples_per_client=600, val_ratio=0.0, shard_size=300, is_iid=True):
         """
         Args:
             dataset: The full dataset (e.g., MNIST) to split.

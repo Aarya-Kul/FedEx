@@ -1,5 +1,5 @@
 from client import Client
-from models import MNISTCNN, model_constants
+from models import MNISTCNN
 import numpy as np
 import threading
 from collections import OrderedDict
@@ -9,6 +9,9 @@ from mnist_dataloader import MNISTDataloader
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import sys
+from sklearn.cluster import SpectralClustering
+
+
 # import pdb
 # pdb.set_trace()
 
@@ -31,6 +34,7 @@ class Server():
 
         self.server_cv: threading.Condition = threading.Condition(threading.Lock())
 
+        # list: index is client id and value is tuple of (weights, loss)
         self.clients_training_data: list[tuple] = [(0,0)] * self.num_clients
         self.devices_done_running: set = set()
 
@@ -61,7 +65,7 @@ class Server():
                                                     is_iid=False)
 
         print("Done splitting the data.")
-        self.clients = {}
+        self.clients = OrderedDict()
         for client_id in range(self.num_clients):
             new_client = Client(
                 client_id=client_id,
@@ -125,18 +129,18 @@ class Server():
 
     # Return the state dictionary of the global model after training
     def fed_avg(self, clients: np.array, weight_log = False):
-        weights = np.array([len(cli.train_dataloader) for cli in self.clients.values()])
+        weights = np.array([len(self.clients[cli].train_dataloader) if cli in clients else 0 for cli in self.clients])
         weights = weights / np.sum(weights)
         
         # take log of weights if testing extension 2
         if weight_log:
             weights = np.log(weights)
 
-        # Get training data from a random client to get the keys from state_dict
-        first_weight = self.clients_training_data[clients[0]][0]
+        # Get the state dict of the first client that returned
+        first_state_dict = self.clients_training_data[clients[0]][0]
         
         avg_weights = OrderedDict()
-        for key in first_weight.keys():
+        for key in first_state_dict.keys():
             curr_weights = [weights[i] * self.clients_training_data[i][0][key] for i in clients]
             stacked_weights = torch.stack(curr_weights)
             avg_weights[key] = torch.mean(stacked_weights, dim=0)
@@ -182,7 +186,7 @@ class Server():
         # step 1: run current core model and keep track of weights
 
         # TODO: run one communication round in the Server
-
+        
         # step 2: cluster weights to find similar clients
         stored_weights = []
         for client_weights, _ in enumerate(self.clients_training_data):
@@ -194,7 +198,6 @@ class Server():
             stored_weights.append(curr_row)
 
         feature_matrix = np.array(stored_weights)
-
 
         clustering = SpectralClustering(n_clusters=model_constants["NUM_CLUSTERS"], assign_labels='discretize', random_state=0).fit(feature_matrix)
         return clustering
