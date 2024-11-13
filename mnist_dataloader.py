@@ -73,8 +73,9 @@ class MNISTDataloader(DataLoader):
         self.is_iid = is_iid
 
         # Split dataset into train and validation sets
-        self.train_indices, self.val_indices = split_indices(len(self.dataset), self.val_ratio)
-        # self.train_indices, self.val_indices = split_indices(1000, self.val_ratio)
+        # self.train_indices, self.val_indices = split_indices(len(self.dataset), self.val_ratio)
+        self.train_indices, self.val_indices = split_indices(10000, self.val_ratio)
+
         self.train_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.train_indices]
         self.val_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.val_indices]
 

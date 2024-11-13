@@ -25,7 +25,7 @@ model_constants = {
     "LOCAL_EPOCHS": 5,
     "LEARNING_RATE": 0.01,
     "LABELS_PER_CLIENT": 2,
-    "COMMUNICATION_ROUNDS": 100,
+    "COMMUNICATION_ROUNDS": 10,
     "NUM_CLUSTERS": 3
 }
 
@@ -44,6 +44,7 @@ class Server():
 
         self.global_model: MNISTCNN = MNISTCNN(model_constants)
 
+        self.total_rounds = num_rounds
         self.num_rounds = num_rounds
 
         if is_iid:
@@ -96,7 +97,7 @@ class Server():
         best_loss = np.inf
         while not self.convergence_criteria():
             print("\n\n########################################################################\n", end="")
-            print(f"SERVER INITIALIZING COMMUNICATION ROUND #{100 - self.num_rounds}\n", end="")
+            print(f"SERVER INITIALIZING COMMUNICATION ROUND #{self.total_rounds - self.num_rounds}\n", end="")
             print("########################################################################\n\n\n", end="")
             devices_to_run = np.random.choice(self.client_ids, size=self.clients_per_round, replace=False)
             self.devices_done_running.clear()
@@ -119,7 +120,7 @@ class Server():
             if loss < best_loss:
                 # checkpoint current model if loss has improved
                 best_loss = loss
-                checkpoint_path = checkpoint_dir / f"server{self.server_id:05d}-round{(100 - self.num_rounds):05d}"
+                checkpoint_path = checkpoint_dir / f"server{self.server_id:05d}-round{(self.total_rounds - self.num_rounds):05d}"
                 torch.save(self.global_model.state_dict(), checkpoint_path)
                 
 

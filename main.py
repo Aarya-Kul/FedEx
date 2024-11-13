@@ -108,7 +108,7 @@ def run_clustering(num_clusters, num_clients, train_dataloader_iid, train_datalo
                 clusters = pickle.load(file)
             print(f"cluster assignments: {clusters}")
             return clusters
-             
+            
         # step 1: run current core model and keep track of weights
         initial_server = Server(server_id=-1, clients_ids=range(num_clients), num_rounds=1, client_fraction=1, num_clients=num_clients, train_dataloader_iid=train_dataloader_iid, train_dataloader_non_iid=train_dataloader_non_iid)
         clients_training_data = initial_server.start(load_from_checkpoint=False)
