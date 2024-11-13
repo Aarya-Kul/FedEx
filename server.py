@@ -54,7 +54,7 @@ class Server():
 
         print("Done splitting the data.")
         self.clients = OrderedDict()
-        for client_id in range(num_clients):
+        for client_id in self.client_ids:
             new_client = Client(
                 client_id=client_id,
                 server=self,
@@ -89,8 +89,10 @@ class Server():
         if load_from_checkpoint:
             # find last checkpoint round (round with best loss)
             try:
-                best_checkpoint = sorted(glob.glob(checkpoint_dir / f"server{self.server_id:05d}*"))[-1]
+                matches = glob.glob(str(checkpoint_dir / f"server{self.server_id:05d}*"))
+                best_checkpoint = sorted(matches)[-1]
                 self.global_model.load_state_dict(torch.load(best_checkpoint, weights_only=True))
+                self.kill_clients()
                 return None
             except (IndexError, FileNotFoundError) as e:
                 print(f"Checkpoint not loaded successfully for server {self.server_id}:", e)
@@ -127,9 +129,7 @@ class Server():
         self.server_cv.release()
 
         # Signal all devices to exit and return when they are done
-        for i in self.client_ids:
-            self.clients[i].kill()
-            self.clients[i].join()
+        self.kill_clients()
         
         return self.clients_training_data
 
@@ -200,3 +200,8 @@ class Server():
         print(f'Loss: {avg_loss:.2f}')
         return (accuracy, avg_loss)
 
+
+    def kill_clients(self):
+        for client in self.clients.values():
+            client.kill()
+            client.join()
