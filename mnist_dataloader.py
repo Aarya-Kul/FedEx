@@ -6,11 +6,11 @@ from torch.utils.data import DataLoader
 import numpy as np
 
 
-transform = transforms.Compose([transforms.ToTensor()])
-# 60,000 pictures 
-train_mnist_data = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-# 10,000 pictures
-test_mnist_data = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+# transform = transforms.Compose([transforms.ToTensor()])
+# # 60,000 pictures 
+# train_mnist_data = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+# # 10,000 pictures
+# test_mnist_data = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
 
 
@@ -24,7 +24,7 @@ def split_indices(num_samples, val_ratio=0.2):
     return train_indices, val_indices
 
 # Create IID Split
-def create_iid_split(data, num_clients=100, examples_per_client=600):
+def create_iid_split(data, num_clients=100):
     num_samples = len(data)
     indices = np.random.permutation(num_samples)
     client_data = np.array_split(indices, num_clients)
@@ -57,32 +57,30 @@ def create_non_iid_split(data, num_clients=100, shards_per_client=2, shard_size=
     return client_data
 
 class MNISTDataloader(DataLoader):
-    def __init__(self, dataset, num_clients=100, examples_per_client=600, val_ratio=0.0, shard_size=300, is_iid=True):
+    def __init__(self, dataset, num_clients=100, val_ratio=0.0, shard_size=300, is_iid=True):
         """
         Args:
             dataset: The full dataset (e.g., MNIST) to split.
             num_clients: Number of clients to create for the federated learning scenario.
-            examples_per_client: Number of examples per client in the IID split.
             val_ratio: Proportion of data to use for validation.
             shard_size: Size of shards for the non-IID split.
             is_iid: Boolean flag to indicate if the split should be IID or non-IID.
         """
         self.dataset = dataset
         self.num_clients = num_clients
-        self.examples_per_client = examples_per_client
         self.val_ratio = val_ratio
         self.shard_size = shard_size
         self.is_iid = is_iid
 
         # Split dataset into train and validation sets
         self.train_indices, self.val_indices = split_indices(len(self.dataset), self.val_ratio)
-        # self.train_indices, self.val_indices = split_indices(10000, self.val_ratio)
+        # self.train_indices, self.val_indices = split_indices(1000, self.val_ratio)
         self.train_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.train_indices]
         self.val_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.val_indices]
 
         # Create splits for federated learning
         if self.is_iid:
-            self.client_data = create_iid_split(self.train_data, self.num_clients, self.examples_per_client)
+            self.client_data = create_iid_split(self.train_data, self.num_clients)
         else:
             self.client_data = create_non_iid_split(self.train_data, self.num_clients, shard_size=self.shard_size)
 

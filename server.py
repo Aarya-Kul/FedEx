@@ -10,6 +10,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import sys
 from sklearn.cluster import SpectralClustering
+import math
 
 
 # import pdb
@@ -17,8 +18,7 @@ from sklearn.cluster import SpectralClustering
 
 # Define constants for federated learning
 model_constants = {
-    "NUM_DEVICES": 100,
-    "DEVICES_PER_EPOCH": 25,
+    "CLIENT_FRACTION": 0.1,
     "LOCAL_MINIBATCH": 10,
     "LOCAL_EPOCHS": 5,
     "LEARNING_RATE": 0.01,
@@ -28,45 +28,29 @@ model_constants = {
 }
 
 class Server():
-    def __init__(self, num_rounds=model_constants["COMMUNICATION_ROUNDS"], is_iid=True):
-        self.num_clients: int = model_constants["NUM_DEVICES"]
+    def __init__(self, train_dataloader_iid, train_dataloader_non_iid, num_clients, is_iid=True, num_rounds=model_constants["COMMUNICATION_ROUNDS"], clients_ids=[], client_fraction=model_constants["CLIENT_FRACTION"]):
+        self.client_ids = clients_ids
+        self.clients_per_round: int = math.ceil(client_fraction * len(self.client_ids))
         self.batch_size = model_constants["LOCAL_MINIBATCH"]
 
         self.server_cv: threading.Condition = threading.Condition(threading.Lock())
 
         # list: index is client id and value is tuple of (weights, loss)
-        self.clients_training_data: list[tuple] = [(0,0)] * self.num_clients
+        self.clients_training_data: list[tuple] = [(0,0)] * num_clients
         self.devices_done_running: set = set()
 
         self.global_model: MNISTCNN = MNISTCNN(model_constants)
 
         self.num_rounds = num_rounds
 
-        transform = transforms.Compose([transforms.ToTensor()])
-        # 60,000 pictures 
-        train_mnist_data = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-        # 10,000 pictures
-        self.test_mnist_data = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
-
-        # create dataloaders for each function
-        examples_per_client = len(train_mnist_data) / self.num_clients
-        shard_size = len(train_mnist_data) / (examples_per_client * 2) # two shards per client
         if is_iid:
-            train_dataloader = MNISTDataloader(dataset=train_mnist_data, 
-                                                    num_clients = self.num_clients,
-                                                    examples_per_client=examples_per_client,
-                                                    shard_size=shard_size,
-                                                    is_iid=True)
+            train_dataloader=train_dataloader_iid
         else:
-            train_dataloader = MNISTDataloader(dataset=train_mnist_data, 
-                                                    num_clients = self.num_clients,
-                                                    examples_per_client=examples_per_client,
-                                                    shard_size=shard_size,
-                                                    is_iid=False)
+            train_dataloader=train_dataloader_non_iid
 
         print("Done splitting the data.")
         self.clients = OrderedDict()
-        for client_id in range(self.num_clients):
+        for client_id in range(num_clients):
             new_client = Client(
                 client_id=client_id,
                 server=self,
@@ -87,7 +71,7 @@ class Server():
     def convergence_criteria(self):
         # Note: could experiment with stopping when the model reaches a certain accuracy
         self.num_rounds -= 1
-        if self.num_rounds <= 0:
+        if self.num_rounds < 0:
             return True
         return False
 
@@ -100,7 +84,7 @@ class Server():
             print("\n\n########################################################################\n", end="")
             print(f"SERVER INITIALIZING COMMUNICATION ROUND #{100 - self.num_rounds}\n", end="")
             print("########################################################################\n\n\n", end="")
-            devices_to_run = np.random.choice(range(self.num_clients), size=model_constants["DEVICES_PER_EPOCH"], replace=False)
+            devices_to_run = np.random.choice(self.client_ids, size=self.clients_per_round, replace=False)
             self.devices_done_running.clear()
 
             # Signal devices to run
@@ -122,28 +106,31 @@ class Server():
         self.server_cv.release()
 
         # Signal all devices to exit and return when they are done
-        for i in range(self.num_clients):
+        for i in self.client_ids:
             self.clients[i].kill()
             self.clients[i].join()
+        
+        return self.clients_training_data
 
 
     # Return the state dictionary of the global model after training
     def fed_avg(self, clients: np.array, weight_log = False):
         weights = np.array([len(self.clients[cli].train_dataloader) if cli in clients else 0 for cli in self.clients])
         weights = weights / np.sum(weights)
-        
+
         # take log of weights if testing extension 2
         if weight_log:
             weights = np.log(weights)
 
         # Get the state dict of the first client that returned
         first_state_dict = self.clients_training_data[clients[0]][0]
-        
+
         avg_weights = OrderedDict()
         for key in first_state_dict.keys():
             curr_weights = [weights[i] * self.clients_training_data[i][0][key] for i in clients]
             stacked_weights = torch.stack(curr_weights)
-            avg_weights[key] = torch.mean(stacked_weights, dim=0)
+            avg_weights[key] = torch.sum(stacked_weights, dim=0)
+            # print(f"Weights {key}: {avg_weights[key]}\n", end="")
 
         return avg_weights
 
@@ -154,7 +141,8 @@ class Server():
 
 
     def test_model(self):
-        test_loader = DataLoader(self.test_mnist_data)
+        test_mnist_data = datasets.MNIST(root='./data', train=False, download=True, transform=transforms.Compose([transforms.ToTensor()]))
+        test_loader = DataLoader(test_mnist_data)
         # Set the model to evaluation mode
         self.global_model.eval()
 
@@ -182,22 +170,3 @@ class Server():
         accuracy = sum(np.array(all_predictions) == np.array(all_labels)) / len(all_labels)
         print(f'Accuracy: {accuracy * 100:.2f}%')
 
-    def run_clustering(self):
-        # step 1: run current core model and keep track of weights
-
-        # TODO: run one communication round in the Server
-        
-        # step 2: cluster weights to find similar clients
-        stored_weights = []
-        for client_weights, _ in enumerate(self.clients_training_data):
-            #stored_weights.append(np.concatenate([weights.flatten() for weights in client_weights.values()]))
-
-            curr_row = []
-            for weights in client_weights.values():
-                curr_row.extend(weights.flatten().tolist())
-            stored_weights.append(curr_row)
-
-        feature_matrix = np.array(stored_weights)
-
-        clustering = SpectralClustering(n_clusters=model_constants["NUM_CLUSTERS"], assign_labels='discretize', random_state=0).fit(feature_matrix)
-        return clustering
