@@ -25,7 +25,7 @@ model_constants = {
     "LOCAL_EPOCHS": 5,
     "LEARNING_RATE": 0.01,
     "LABELS_PER_CLIENT": 2,
-    "COMMUNICATION_ROUNDS": 10,
+    "COMMUNICATION_ROUNDS": 100,
     "NUM_CLUSTERS": 3
 }
 
