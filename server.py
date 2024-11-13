@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader
 import sys
 from sklearn.cluster import SpectralClustering
 import math
+import pathlib
+import glob
 
 
 # import pdb
@@ -28,7 +30,8 @@ model_constants = {
 }
 
 class Server():
-    def __init__(self, train_dataloader_iid, train_dataloader_non_iid, num_clients, is_iid=True, num_rounds=model_constants["COMMUNICATION_ROUNDS"], clients_ids=[], client_fraction=model_constants["CLIENT_FRACTION"]):
+    def __init__(self, server_id, train_dataloader_iid, train_dataloader_non_iid, num_clients, is_iid=True, num_rounds=model_constants["COMMUNICATION_ROUNDS"], clients_ids=[], client_fraction=model_constants["CLIENT_FRACTION"]):
+        self.server_id = server_id
         self.client_ids = clients_ids
         self.clients_per_round: int = math.ceil(client_fraction * len(self.client_ids))
         self.batch_size = model_constants["LOCAL_MINIBATCH"]
@@ -76,10 +79,21 @@ class Server():
         return False
 
 
-    def start(self):
+    def start(self, load_from_checkpoint=False):
         # Main training loop
         self.server_cv.acquire()
+        checkpoint_dir = pathlib.Path("checkpoints")
+        checkpoint_dir.mkdir(exist_ok=True)
         # breakpoint()
+        if load_from_checkpoint:
+            # find last checkpoint round (round with best loss)
+            try:
+                best_checkpoint = sorted(glob.glob(checkpoint_dir / f"server{self.server_id:05d}*"))[-1]
+                self.global_model.load_state_dict(torch.load(best_checkpoint, weights_only=True))
+                return None
+            except (IndexError, FileNotFoundError) as e:
+                print(f"Checkpoint not loaded successfully for server {self.server_id}:", e)
+        best_loss = np.inf
         while not self.convergence_criteria():
             print("\n\n########################################################################\n", end="")
             print(f"SERVER INITIALIZING COMMUNICATION ROUND #{100 - self.num_rounds}\n", end="")
@@ -101,7 +115,13 @@ class Server():
             self.global_model.load_state_dict(avg_model)
 
             # Test global model performance
-            self.test_model()
+            accuracy, loss = self.test_model()
+            if loss < best_loss:
+                # checkpoint current model if loss has improved
+                best_loss = loss
+                checkpoint_path = checkpoint_dir / f"server{self.server_id:05d}-round{(100 - self.num_rounds):05d}"
+                torch.save(self.global_model.state_dict(), checkpoint_path)
+                
 
         self.server_cv.release()
 
@@ -145,10 +165,12 @@ class Server():
         test_loader = DataLoader(test_mnist_data)
         # Set the model to evaluation mode
         self.global_model.eval()
-
-        # Initialize lists to hold predictions and ground-truth labels
         all_predictions = []
         all_labels = []
+        total_loss = 0.0
+
+        # Define loss function
+        criterion = torch.nn.CrossEntropyLoss()
 
         # Disable gradient calculation for testing (increases efficiency)
         with torch.no_grad():
@@ -158,6 +180,10 @@ class Server():
                 
                 # Get model predictions
                 outputs = self.global_model(inputs)
+
+                # calculate batch loss
+                loss = criterion(outputs, labels)
+                total_loss += loss.item()
                 
                 # get model prediction
                 _, predictions = torch.max(outputs, 1)
@@ -166,7 +192,10 @@ class Server():
                 all_predictions.extend(predictions.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
 
-        # Calculate accuracy
+        # Calculate accuracy and loss
+        avg_loss = total_loss / len(test_loader)
         accuracy = sum(np.array(all_predictions) == np.array(all_labels)) / len(all_labels)
         print(f'Accuracy: {accuracy * 100:.2f}%')
+        print(f'Loss: {avg_loss:.2f}')
+        return (accuracy, avg_loss)
 
