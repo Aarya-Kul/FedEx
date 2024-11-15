@@ -4,6 +4,7 @@ from collections import defaultdict
 from torch.utils.data import DataLoader
 from torch.utils.data import DataLoader
 import numpy as np
+from sklearn.model_selection import train_test_split
 
 
 # transform = transforms.Compose([transforms.ToTensor()])
@@ -73,8 +74,10 @@ class MNISTDataloader(DataLoader):
         self.is_iid = is_iid
 
         # Split dataset into train and validation sets
-        self.train_indices, self.val_indices = split_indices(len(self.dataset), self.val_ratio)
-        # self.train_indices, self.val_indices = split_indices(10000, self.val_ratio)
+        # X_train, X_test, y_train, y_val = train_test_split(self.dataset[0], self.dataset[1], test_size=0.2, random_state=42)
+
+        # self.train_indices, self.val_indices = split_indices(len(self.dataset), self.val_ratio)
+        self.train_indices, self.val_indices = split_indices(10000, self.val_ratio)
 
         self.train_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.train_indices]
         self.val_data = [(self.dataset[i][0], self.dataset[i][1]) for i in self.val_indices]

@@ -12,7 +12,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 import argparse
 import pathlib
 import pickle
+import torch
+from models import FedEx
 
+np.random.seed(42)
+torch.manual_seed(42)
 
 # Main thread logic for assigning tasks
 def main():
@@ -42,12 +46,15 @@ def main():
     train_dataloader_iid = MNISTDataloader(dataset=train_mnist_data, 
                                                 num_clients = num_clients,
                                                 shard_size=shard_size,
-                                                is_iid=True)
+                                                is_iid=True,
+                                                val_ratio=0.5)
     train_dataloader_non_iid = MNISTDataloader(dataset=train_mnist_data, 
                                                 num_clients = num_clients,
                                                 shard_size=shard_size,
-                                                is_iid=False)
+                                                is_iid=False,
+                                                val_ratio=0.5)
 
+    fedEx_train_dataloader = DataLoader(train_dataloader_iid.get_val_data())
 
     # RUN CLUSTERING
     #########
@@ -80,6 +87,8 @@ def main():
                 load_from_checkpoint = False
             cluster.start(load_from_checkpoint=load_from_checkpoint)
             cluster_servers[server_id] = cluster
+
+            callFedEx(cluster_servers, num_clusters, fedEx_train_dataloader)
     else:
         server = Server(
             server_id=0,
@@ -136,6 +145,14 @@ def run_clustering(num_clusters, num_clients, train_dataloader_iid, train_datalo
         with open(checkpoint_filename, 'wb') as file:
             pickle.dump(clusters, file)
         return clusters
+
+
+def callFedEx(cluster_servers, num_clusters, fedEx_train_dataloader):
+    # train_dataloader = DataLoader(datasets.MNIST(root='./data', train=True, download=True, transform=transforms.Compose([transforms.ToTensor()])))
+    models = [server.global_model for server in cluster_servers.values()]
+    fedex = FedEx(num_clusters=num_clusters, learning_rate=0.01, epochs=100, models=models, train_dataloader=fedEx_train_dataloader)
+    fedex.train_model()
+    fedex.test_model()
 
 
 if __name__ == '__main__':
