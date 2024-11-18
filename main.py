@@ -47,14 +47,12 @@ def main():
                                                 num_clients = num_clients,
                                                 shard_size=shard_size,
                                                 is_iid=True,
-                                                val_ratio=0.5)
+                                                val_ratio=0)
     train_dataloader_non_iid = MNISTDataloader(dataset=train_mnist_data, 
                                                 num_clients = num_clients,
                                                 shard_size=shard_size,
                                                 is_iid=False,
-                                                val_ratio=0.5)
-
-    fedEx_train_dataloader = DataLoader(train_dataloader_iid.get_val_data())
+                                                val_ratio=0)
 
     # RUN CLUSTERING
     #########
@@ -73,6 +71,7 @@ def main():
         for server_id, cluster_devices in enumerate(clusters):
             cluster = Server(
                 server_id=server_id,
+                is_iid=False,
                 train_dataloader_iid=train_dataloader_iid,
                 train_dataloader_non_iid=train_dataloader_non_iid,
                 num_clients=num_clients,
@@ -92,6 +91,7 @@ def main():
     else:
         server = Server(
             server_id=0,
+            is_iid=False,
             train_dataloader_iid=train_dataloader_iid,
             train_dataloader_non_iid=train_dataloader_non_iid,
             num_clients=num_clients,

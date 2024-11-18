@@ -23,7 +23,7 @@ model_constants = {
     "CLIENT_FRACTION": 0.1,
     "LOCAL_MINIBATCH": 10,
     "LOCAL_EPOCHS": 5,
-    "LEARNING_RATE": 0.01,
+    "LEARNING_RATE": 0.001,
     "LABELS_PER_CLIENT": 2,
     "COMMUNICATION_ROUNDS": 5,
     "NUM_CLUSTERS": 3
