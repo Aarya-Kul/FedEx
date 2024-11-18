@@ -150,7 +150,7 @@ def run_clustering(num_clusters, num_clients, train_dataloader_iid, train_datalo
 def callFedEx(cluster_servers, num_clusters, fedEx_train_dataloader):
     # train_dataloader = DataLoader(datasets.MNIST(root='./data', train=True, download=True, transform=transforms.Compose([transforms.ToTensor()])))
     models = [server.global_model for server in cluster_servers.values()]
-    fedex = FedEx(num_clusters=num_clusters, learning_rate=0.01, epochs=100, models=models, train_dataloader=fedEx_train_dataloader)
+    fedex = FedExOnlineLayer(num_clusters=num_clusters, learning_rate=0.01, epochs=100, models=models, train_dataloader=fedEx_train_dataloader)
     fedex.train_model()
     fedex.test_model()
 

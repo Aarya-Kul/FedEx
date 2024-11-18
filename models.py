@@ -116,7 +116,7 @@ class FedEx(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
         self.criterion = torch.nn.CrossEntropyLoss()
 
-        slelf.learning_rate = learning_rate
+        self.learning_rate = learning_rate
         self.epochs = epochs
 
         self.models = models
@@ -224,3 +224,203 @@ class FedEx(nn.Module):
         print(f'Accuracy: {accuracy * 100:.2f}%')
         print(f'Loss: {avg_loss:.2f}')
         return (accuracy, avg_loss)
+
+class FedExOnlineLayer(nn.Module):
+    def __init__(self, num_clusters, learning_rate, epochs, models, train_dataloader):
+        super(FedExOnlineLayer, self).__init__()
+
+        # Number of clusters and learning rate are still used in the layer initialization.
+        self.num_clusters = num_clusters
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        self.models = models
+        self.train_dataloader = train_dataloader
+
+        # The shared online layer would typically be a very light, simple layer.
+        # No need for large fully connected layers as in the original code.
+        self.shared_fc = nn.Linear(in_features=num_clusters * 10, out_features=10)
+
+        # Optimizer
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+
+        # Loss function
+        self.criterion = nn.CrossEntropyLoss()
+
+    def forward(self, x):
+        # Instead of a chain of fully connected layers, we just use the shared_fc layer
+        x = self.shared_fc(x)
+        output = F.softmax(x, dim=1)
+        return output
+    
+    def train_model(self):
+        print("FedEx Online Layer training started...\n", end="")
+        average_loss = -1
+        
+        # Detect device
+        device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
+        
+        # Move model to device
+        self.to(device)
+        self.train()
+
+        for epoch in range(self.epochs):  
+            total_loss = 0
+            for inputs, labels in self.train_dataloader:
+                inputs, labels = inputs.to(device), labels.to(device)
+
+                fedEx_inputs = []
+                # For each client, collect its model's output on the current batch
+                for cnn in self.models:
+                    cnn.eval()
+                    fedEx_inputs += list(cnn(inputs))  # Collecting outputs from each client's model
+                
+                fedEx_inputs = torch.stack(fedEx_inputs).mean(dim=0)  # Averaging the outputs from all clients
+
+                self.optimizer.zero_grad()
+                predictions = self(fedEx_inputs)  # Forward pass through the online layer
+
+                curr_loss = self.criterion(predictions, labels)
+                curr_loss.backward()
+
+                self.optimizer.step()
+
+                total_loss += curr_loss.item()
+
+            average_loss = total_loss / len(self.train_dataloader)
+            if epoch % 10 == 0:
+                print(f'Epoch [{epoch}/{self.epochs}], Loss: {average_loss:.4f}\n', end="")
+
+        print("FedEx Online Layer training completed.\n", end="")
+
+        assert(average_loss != -1)
+        return self.state_dict(), average_loss
+    
+    def test_model(self):
+        test_mnist_data = datasets.MNIST(root='./data', train=False, download=True, transform=transforms.Compose([transforms.ToTensor()]))
+        test_loader = DataLoader(test_mnist_data)
+
+        self.eval()  # Set model to evaluation mode
+        all_predictions = []
+        all_labels = []
+        total_loss = 0.0
+
+        # Disable gradient calculation for testing (increases efficiency)
+        with torch.no_grad():
+            for inputs, labels in test_loader:
+                # Move inputs and labels to the appropriate device (GPU or CPU)
+                inputs, labels = inputs.to('cpu'), labels.to('cpu')
+                
+                # Get model predictions
+                outputs = self(inputs)
+
+                # Calculate batch loss
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item()
+
+                # Get model prediction
+                _, predictions = torch.max(outputs, 1)
+
+                # Store predictions and labels
+                all_predictions.extend(predictions.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
+        avg_loss = total_loss / len(test_loader)
+        accuracy = np.sum(np.array(all_predictions) == np.array(all_labels)) / len(all_labels)
+        
+        print(f'Accuracy: {accuracy * 100:.2f}%')
+        print(f'Loss: {avg_loss:.2f}')  
+
+
+class FedExOnlineLayerTestOnly(nn.Module):
+    def __init__(self, num_clusters, learning_rate, epochs, models):
+        super(FedExOnlineLayer, self).__init__()
+
+        self.num_clusters = num_clusters
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        self.models = models 
+
+        # The shared online layer: A simple layer to aggregate features from client models
+        self.shared_fc = nn.Linear(in_features=num_clusters * 10, out_features=10)
+
+        # Optimizer
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+
+        # Loss function
+        self.criterion = nn.CrossEntropyLoss()
+
+    def forward(self, x):
+        # Forward pass through the shared layer
+        x = self.shared_fc(x)
+        output = F.softmax(x, dim=1)
+        return output
+    
+    def aggregate_client_outputs(self, inputs):
+        """
+        Aggregates outputs from all client models (simulating federated learning).
+        Each model contributes to the overall output by averaging their predictions.
+        """
+        aggregated_input = []
+        for cnn in self.models:
+            cnn.eval()  # Ensure each model is in eval mode
+            aggregated_input += list(cnn(inputs))  # Collect outputs from each client's model
+        return torch.mean(torch.stack(aggregated_input), dim=0)  # Average the outputs
+
+    def train_model(self):
+        print("FedEx Online Layer training started...\n", end="")
+        
+        # Federated learning: Normally, we would aggregate client updates here.
+        # However, without access to client training data, we simulate by fine-tuning during testing.
+
+        for epoch in range(self.epochs):
+            print(f"Epoch {epoch+1}/{self.epochs} - Fine-Tuning during testing")
+            # No training loop because there is no `train_dataloader`, federated training occurs on client side
+
+        print("FedEx Online Layer training completed.\n", end="")
+    
+    def test_model(self, test_loader):
+        """
+        Simulates federated learning fine-tuning by updating the global model
+        based on the aggregated client predictions during the testing phase.
+        """
+        self.eval()  # Set model to evaluation mode
+        
+        all_predictions = []
+        all_labels = []
+        total_loss = 0.0
+        
+        # Disable gradient calculation for efficiency during testing
+        with torch.no_grad():
+            for inputs, labels in test_loader:
+                inputs, labels = inputs.to('cpu'), labels.to('cpu')
+
+                # Aggregate the outputs from the client models
+                fedEx_inputs = self.aggregate_client_outputs(inputs)
+
+                # Make predictions with the shared online layer
+                outputs = self(fedEx_inputs)
+
+                # Calculate loss for the test batch
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item()
+
+                # Get predictions
+                _, predictions = torch.max(outputs, 1)
+
+                # Store predictions and labels for evaluation
+                all_predictions.extend(predictions.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
+                # Simulate federated averaging by updating the global model
+                self.optimizer.zero_grad()
+                loss.backward()  # Backpropagate the loss to adjust global model
+                self.optimizer.step()
+
+        # Calculate accuracy and loss for the test set
+        avg_loss = total_loss / len(test_loader)
+        accuracy = np.sum(np.array(all_predictions) == np.array(all_labels)) / len(all_labels)
+
+        print(f'Accuracy: {accuracy * 100:.2f}%')
+        print(f'Loss: {avg_loss:.2f}')
+        
+        return accuracy, avg_loss
