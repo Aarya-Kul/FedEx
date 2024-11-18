@@ -136,8 +136,12 @@ class Server():
 
     # Return the state dictionary of the global model after training
     def fed_avg(self, clients: np.array, weight_log = False):
-        weights = np.array([len(self.clients[cli].train_dataloader) if cli in clients else 0 for cli in self.clients])
-        weights = weights / np.sum(weights)
+        weights = OrderedDict()
+        weights = {cli: len(self.clients[cli].train_dataloader) for cli in clients}
+        # weights = np.array([len(self.clients[cli].train_dataloader) if cli in clients else 0 for cli in self.clients])
+        weight_sum = np.sum(list(weights.values()))
+        for key, val in weights.items():
+            weights[key] = val / weight_sum
 
         # take log of weights if testing extension 2
         if weight_log:
