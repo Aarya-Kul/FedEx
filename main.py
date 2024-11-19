@@ -91,9 +91,35 @@ def main():
         callFedEx(cluster_servers)
     else:
         print("Running without clustering")
-        figure_2_params = [[10, 1], [10, 5], [10,20], [50, 1], [50, 5],
-                           [50, 20], [float('inf'), 1], 
-                           [float('inf'), 5], [float('inf'), 20]]
+        # configurations = [
+        #     {"batch_size": 10, "epochs": 1},
+        #     {"batch_size": 10, "epochs": 5},
+        #     {"batch_size": 10, "epochs": 20},
+        #     {"batch_size": 50, "epochs": 1},
+        #     {"batch_size": 50, "epochs": 5},
+        #     {"batch_size": 50, "epochs": 20},
+        #     {"batch_size": float("inf"), "epochs": 1},
+        #     {"batch_size": float("inf"), "epochs": 5},
+        #     {"batch_size": float("inf"), "epochs": 20},
+        # ]
+        # servers = []
+        # for config in configurations:
+        #     server =  Server(
+        #         server_id=0,
+        #         is_iid=False,
+        #         train_dataloader_iid=train_dataloader_iid,
+        #         train_dataloader_non_iid= None,
+        #         num_clients=num_clients, 
+        #         num_rounds = 3, 
+        #         clients_ids=range(num_clients),
+        #         local_epochs= config["epochs"],
+        #         batch_size = config["batch_size"]
+        #     )
+        #     servers.append(server)
+        # test_accuracies = []
+        # test_accuracies = [server.test_accuracies for server in servers]
+        # labels = ["B=10 E=10", "B=5 E=10"]
+        # gen_plot(test_accuracies, labels)
         
         server1 = Server(
             server_id=0,
@@ -101,7 +127,7 @@ def main():
             train_dataloader_iid=train_dataloader_iid,
             train_dataloader_non_iid=train_dataloader_non_iid,
             num_clients=num_clients, 
-            num_rounds = 10, 
+            num_rounds = 3, 
             clients_ids=range(num_clients),
             local_epochs=10,
             batch_size=10
@@ -112,7 +138,7 @@ def main():
             train_dataloader_iid=train_dataloader_iid,
             train_dataloader_non_iid=train_dataloader_non_iid,
             num_clients=num_clients, 
-            num_rounds = 10, 
+            num_rounds = 3, 
             clients_ids=range(num_clients),
             local_epochs=10,
             batch_size=5
@@ -120,6 +146,7 @@ def main():
             
         server1.start() 
         server2.start()
+
         test_accuracies = [server1.test_accuracies, server2.test_accuracies]
         labels = ["B=10 E=10", "B=5 E=10"]
         gen_plot(test_accuracies, labels)
@@ -180,7 +207,9 @@ def callFedEx(cluster_servers):
 
 def gen_plot(client_test_data, labels):
     plt.figure(figsize=(8, 6))
-    communication_rounds = np.linspace(1, 10, 10) 
+    communication_rounds = np.linspace(1, 3, 3) 
+    colors = ["red", "orange", "blue"]  # Colors for different batch sizes
+    linestyles = ["-", "--", ":"]  # Linestyles for different epochs    
     for i in range(len(client_test_data)): 
         plt.plot(communication_rounds, client_test_data[i], 'r-', label=labels[i])
     plt.xlabel("Communication Rounds", fontsize=12)
