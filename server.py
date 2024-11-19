@@ -35,6 +35,7 @@ class Server():
         self.client_ids = clients_ids
         self.clients_per_round: int = math.ceil(client_fraction * len(self.client_ids))
         self.batch_size = model_constants["LOCAL_MINIBATCH"]
+        self.test_accuracies = []
 
         self.server_cv: threading.Condition = threading.Condition(threading.Lock())
 
@@ -119,6 +120,8 @@ class Server():
 
             # Test global model performance
             accuracy, loss = self.test_model()
+            self.test_accuracies.append(accuracy)
+            
             if loss < best_loss:
                 # checkpoint current model if loss has improved
                 best_loss = loss
