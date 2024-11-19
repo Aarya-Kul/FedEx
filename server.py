@@ -29,21 +29,22 @@ model_constants = {
     "NUM_CLUSTERS": 3
 }
 
+
 class Server():
-    def __init__(self, server_id, train_dataloader_iid, train_dataloader_non_iid, num_clients, is_iid=True, num_rounds=model_constants["COMMUNICATION_ROUNDS"], clients_ids=[], client_fraction=model_constants["CLIENT_FRACTION"]):
+    def __init__(self, server_id, train_dataloader_iid, train_dataloader_non_iid, num_clients, is_iid=True, num_rounds=model_constants["COMMUNICATION_ROUNDS"], clients_ids=[], client_fraction=model_constants["CLIENT_FRACTION"], batch_size=model_constants["LOCAL_MINIBATCH"], local_epochs=model_constants["LOCAL_EPOCHS"]):
         self.server_id = server_id
         self.client_ids = clients_ids
         self.clients_per_round: int = math.ceil(client_fraction * len(self.client_ids))
-        self.batch_size = model_constants["LOCAL_MINIBATCH"]
+        self.batch_size = batch_size  
         self.test_accuracies = []
-
+        self.local_epochs = local_epochs
         self.server_cv: threading.Condition = threading.Condition(threading.Lock())
 
         # list: index is client id and value is tuple of (weights, loss)
         self.clients_training_data: list[tuple] = [(0,0)] * num_clients
         self.devices_done_running: set = set()
 
-        self.global_model: MNISTCNN = MNISTCNN(model_constants)
+        self.global_model: MNISTCNN = MNISTCNN(model_constants, self.local_epochs)
 
         self.total_rounds = num_rounds
         self.num_rounds = num_rounds

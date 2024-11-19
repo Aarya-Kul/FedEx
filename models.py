@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 import numpy as np
 
 class MNISTCNN(nn.Module):
-    def __init__(self, model_constants):
+    def __init__(self, model_constants, local_epochs):
         super(MNISTCNN, self).__init__()
 
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5)
@@ -21,7 +21,7 @@ class MNISTCNN(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=model_constants["LEARNING_RATE"])
         self.loss_function = torch.nn.CrossEntropyLoss()
 
-        self.local_epochs = model_constants["LOCAL_EPOCHS"]
+        self.local_epochs = local_epochs
 
 
     def forward(self, x):

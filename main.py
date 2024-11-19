@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 import sys
 from sklearn.cluster import SpectralClustering
 from sklearn.metrics.pairwise import cosine_similarity
+import matplotlib.pyplot as plt
 import argparse
 import pathlib
 import pickle
@@ -17,7 +18,6 @@ from models import FedEx
 
 np.random.seed(42)
 torch.manual_seed(42)
-
 # Main thread logic for assigning tasks
 def main():
     parser = argparse.ArgumentParser(description="program that runs FedAvg. Optionally with clustering or weight logs")
@@ -57,6 +57,7 @@ def main():
     # RUN CLUSTERING
     #########
     if int(args.clusters) != -1:
+        print("Running clustering")
         num_clusters = int(args.clusters)
         # NUM_CLUSTERS = 3
         print(f"Load clusters from checkpoint? [y/n]")
@@ -89,16 +90,39 @@ def main():
 
         callFedEx(cluster_servers)
     else:
-        server = Server(
+        print("Running without clustering")
+        figure_2_params = [[10, 1], [10, 5], [10,20], [50, 1], [50, 5],
+                           [50, 20], [float('inf'), 1], 
+                           [float('inf'), 5], [float('inf'), 20]]
+        
+        server1 = Server(
             server_id=0,
             is_iid=False,
             train_dataloader_iid=train_dataloader_iid,
             train_dataloader_non_iid=train_dataloader_non_iid,
-            num_clients=num_clients,
-            clients_ids=range(num_clients)
+            num_clients=num_clients, 
+            num_rounds = 10, 
+            clients_ids=range(num_clients),
+            local_epochs=10,
+            batch_size=10
         )
-        server.start()
-    
+        server2 = Server(
+            server_id=0,
+            is_iid=False,
+            train_dataloader_iid=train_dataloader_iid,
+            train_dataloader_non_iid=train_dataloader_non_iid,
+            num_clients=num_clients, 
+            num_rounds = 10, 
+            clients_ids=range(num_clients),
+            local_epochs=10,
+            batch_size=5
+        )
+            
+        server1.start() 
+        server2.start()
+        test_accuracies = [server1.test_accuracies, server2.test_accuracies]
+        labels = ["B=10 E=10", "B=5 E=10"]
+        gen_plot(test_accuracies, labels)
 
     # At this point, all the clients are done running
     # TODO: modify the server to cache all the losses to reproduce graphs from paper
@@ -153,6 +177,20 @@ def callFedEx(cluster_servers):
     models = [server.global_model for server in cluster_servers.values()]
     fedex = FedEx(models=models)
     fedex.test_model()
+
+def gen_plot(client_test_data, labels):
+    plt.figure(figsize=(8, 6))
+    communication_rounds = np.linspace(1, 10, 10) 
+    for i in range(len(client_test_data)): 
+        plt.plot(communication_rounds, client_test_data[i], 'r-', label=labels[i])
+    plt.xlabel("Communication Rounds", fontsize=12)
+    plt.ylabel("Test Accuracy", fontsize=12)
+    plt.title("MNIST CNN IID", fontsize=14)
+    plt.legend(fontsize=10)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("figure_2_replication.png")
+    plt.show()
 
 
 if __name__ == '__main__':
