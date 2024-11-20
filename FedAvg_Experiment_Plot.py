@@ -23,7 +23,7 @@ configurations = [
     {"batch_size": float("inf"), "epochs": 20}
 ]
 
-configurations_subset = [ 
+configurations_subset = [
     {"batch_size": 10, "epochs": 1},
     {"batch_size": 50, "epochs": 20},
     {"batch_size": float("inf"), "epochs": 5}
@@ -90,11 +90,13 @@ def plot_accuracies(is_iid, configurations = configurations):
         batch_size, epochs = config["batch_size"], config["epochs"]
         label = f"B={batch_size if batch_size != float('inf') else '∞'} E={epochs}"
         if configurations != configurations_subset:
+            print("PROPER SPOT")
             color = colors[i // 3]  # Switch color every 3 configs cuz there's 3 types
             linestyle = linestyles[i % 3]  # There's 3 types as well for each type of batch size
         else:
-            colors = colors[i]
-            linestyle = [i]
+            print("in hereeeeeee")
+            color = colors[i]
+            linestyle = linestyles[i]
         plt.plot(results[(batch_size, epochs)], label=label, color=color, linestyle=linestyle)
     # Graph formatting
     plt.xlabel("Communication Rounds")
