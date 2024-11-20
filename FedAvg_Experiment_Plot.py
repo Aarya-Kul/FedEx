@@ -80,8 +80,8 @@ def run_experiment(num_rounds=1, is_iid = True, configurations=configurations):
         print("Server finished with config", config)
         
 
-def plot_accuracies(is_iid, configurations = configurations):
-    # Plotting code - brought to you the one and only Chat
+def plot_accuracies(is_iid, configurations=configurations):
+    # Plotting code
     plt.figure(figsize=(8, 6))
     colors = ["red", "orange", "blue"]  # Colors for different batch sizes
     linestyles = ["-", "--", ":"]  # Linestyles for different epochs
@@ -90,28 +90,24 @@ def plot_accuracies(is_iid, configurations = configurations):
         batch_size, epochs = config["batch_size"], config["epochs"]
         label = f"B={batch_size if batch_size != float('inf') else '∞'} E={epochs}"
         if configurations != configurations_subset:
-            print("PROPER SPOT")
-            color = colors[i // 3]  # Switch color every 3 configs cuz there's 3 types
-            linestyle = linestyles[i % 3]  # There's 3 types as well for each type of batch size
+            color = colors[i // 3]  # Switch color every 3 configs
+            linestyle = linestyles[i % 3]
         else:
-            print("in hereeeeeee")
             color = colors[i]
             linestyle = linestyles[i]
         plt.plot(results[(batch_size, epochs)], label=label, color=color, linestyle=linestyle)
-    # Graph formatting
+
     plt.xlabel("Communication Rounds")
     plt.ylabel("Test Accuracy")
-    if is_iid:
-        plt.title("MNIST CNN IID")
-    else:
-        plt.title("MNIST CNN Non-IID")
+    plt.title("MNIST CNN IID" if is_iid else "MNIST CNN Non-IID")
     plt.legend()
     plt.grid(True)
+    
+    # Save before displaying
+    filename = "Experiment_Plot_IID" if is_iid else "Experiment_Plot_Non_IID"
+    plt.savefig(filename)
+    
     plt.show()
-    if is_iid:
-        plt.savefig("Experiment_Plot_IID")
-    else:
-        plt.savefig("Experiment_Plot_Non_IID")
 
 run_experiment(is_iid, configurations=configurations_subset)
 plot_accuracies(is_iid, configurations = configurations_subset)
