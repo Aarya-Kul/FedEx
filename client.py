@@ -29,12 +29,12 @@ class Client():
 
 
     def start(self):
-        print(f"Client {self.client_id} started.\n", end="")
+        # print(f"Client {self.client_id} started.\n", end="")
         self.client_cv.acquire()
         while self.status != DeviceAction.STOP:
 
             while self.status == DeviceAction.WAIT:
-                print(f"Client {self.client_id} waiting for directions.\n", end="")
+                # print(f"Client {self.client_id} waiting for directions.\n", end="")
                 self.client_cv.wait()
             
             if self.status == DeviceAction.STOP:
@@ -42,7 +42,7 @@ class Client():
                 return
             
             # Let server know that the client is done running
-            print(f"Client {self.client_id} is training.\n", end="")
+            # print(f"Client {self.client_id} is training.\n", end="")
             self.server.send_client_result(self.client_id, self.model.train_model(self.train_dataloader, self.client_id))
 
             self.status = DeviceAction.WAIT

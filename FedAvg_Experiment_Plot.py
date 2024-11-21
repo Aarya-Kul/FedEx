@@ -4,6 +4,8 @@ import numpy as np
 from mnist_dataloader import MNISTDataloader
 from torchvision import datasets, transforms
 from server import Server
+import pickle
+import os
 
 ##Member variables
 is_iid = True
@@ -36,7 +38,7 @@ transform = transforms.Compose([transforms.ToTensor()])
 train_mnist_data = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 
 # Store results num_rounds times
-def run_experiment(num_rounds=1, is_iid = True, configurations=configurations):
+def run_experiment(num_rounds, is_iid = True, configurations=configurations):
     num_clients = 100
     examples_per_client = len(train_mnist_data) // num_clients
     shard_size = examples_per_client // 2 # two shards per client
@@ -74,8 +76,15 @@ def run_experiment(num_rounds=1, is_iid = True, configurations=configurations):
         # server.model_constants["LOCAL_EPOCHS"] = epochs
         server.start()
         print("Server with config:", config, "is starting")
-        # store results from dis pairing
+        # store results of test accuracies
         test_accuracies = server.test_accuracies
+        folder_path = "saved_info"
+        os.makedirs(folder_path, exist_ok=True)
+        file_path_ = f"test_accuracies_B:{batch_size}_E:{epochs}.pkl"
+        file_path = os.path.join(folder_path, file_path_)
+        with open(file_path, "wb") as file:
+            pickle.dump(test_accuracies, file)
+        ##Store test accuracies 
         results[(batch_size, epochs)] = test_accuracies
         print("Server finished with config", config)
         
@@ -95,8 +104,16 @@ def plot_accuracies(is_iid, configurations=configurations):
         else:
             color = colors[i]
             linestyle = linestyles[i]
-        plt.plot(results[(batch_size, epochs)], label=label, color=color, linestyle=linestyle)
+            
+        data = results.get((batch_size, epochs), [])
+        if data:
+            plt.plot(data, label=label, color=color, linestyle=linestyle, marker='o')
+        else:
+            print(f"No data found for batch_size={batch_size}, epochs={epochs}")
+        print("Results are", results)
+        print("Results are being accessed as", results[(batch_size, epochs)])
 
+    # Adjust x-axis to start at 1
     plt.xlabel("Communication Rounds")
     plt.ylabel("Test Accuracy")
     plt.title("MNIST CNN IID" if is_iid else "MNIST CNN Non-IID")
@@ -109,5 +126,5 @@ def plot_accuracies(is_iid, configurations=configurations):
     
     plt.show()
 
-run_experiment(is_iid, configurations=configurations_subset)
-plot_accuracies(is_iid, configurations = configurations_subset)
+run_experiment(num_rounds=3, is_iid=is_iid, configurations=configurations)
+plot_accuracies(is_iid, configurations = configurations)

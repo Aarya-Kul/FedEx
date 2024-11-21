@@ -43,12 +43,12 @@ class MNISTCNN(nn.Module):
     
 
     def train_model(self, train_dataloader: DataLoader, client_id: int):
-        print("Training model within model class")
+        # print("Training model within model class")
         average_loss = -1
 
         # Detect device
-        device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
-        print(f"Using device: {device}")
+        device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+        # print(f"Using device: {device}")
 
         # Move model to device
         self.to(device)
@@ -69,8 +69,8 @@ class MNISTCNN(nn.Module):
                 total_loss += curr_loss.item()
 
             average_loss = total_loss / len(train_dataloader)
-            if epoch % 2 == 0:
-                print(f'Client {client_id}: Epoch [{epoch}/{self.local_epochs}], Loss: {average_loss:.4f}\n', end="")
+            # if epoch % 2 == 0:
+            #     print(f'Client {client_id}: Epoch [{epoch}/{self.local_epochs}], Loss: {average_loss:.4f}\n', end="")
 
         # We can access a model's weights with model.state_dict()
         # We also need to save the loss to plot it

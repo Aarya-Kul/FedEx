@@ -13,7 +13,8 @@ from sklearn.cluster import SpectralClustering
 import math
 import pathlib
 import glob
-
+import pickle
+import os
 
 # import pdb
 # pdb.set_trace()
@@ -101,7 +102,31 @@ class Server():
         best_loss = np.inf
         while not self.convergence_criteria():
             print("\n\n########################################################################\n", end="")
-            print(f"SERVER INITIALIZING COMMUNICATION ROUND #{self.total_rounds - self.num_rounds}\n", end="")
+            communication_round = self.total_rounds - self.num_rounds
+            if communication_round % 2 == 0:
+              ##Save test_accuracies
+              # Ensure the folder exists
+              folder_path = "saved_info"
+              os.makedirs(folder_path, exist_ok=True)  # Create the folder if it doesn't already exist
+              file_path_ = f"test_accuracies_with_comm:B:{self.batch_size}_E:{self.local_epochs}.pkl" 
+              # Create the file path under the folder
+              file_path = os.path.join(folder_path, file_path_)
+              print("In server batch size is", self.batch_size, "and local epochs", self.local_epochs)
+              # File path where you want to save the data
+              with open(file_path, "wb") as file:
+                pickle.dump(self.test_accuracies, file)
+
+              ##Save checkpoint file
+              checkpoint = {
+              'model_state_dict': self.global_model.state_dict(),
+              'batch_size': self.batch_size,
+              'local_epochs': self.local_epochs,
+              'communication_round': communication_round
+              }
+              file_path = os.path.join(folder_path, "global_model_checkpoint.pth")
+              torch.save(checkpoint, file_path)
+
+            print(f"SERVER INITIALIZING COMMUNICATION ROUND #{communication_round}\n", end="")
             print("########################################################################\n\n\n", end="")
             devices_to_run = np.random.choice(self.client_ids, size=self.clients_per_round, replace=False)
             self.devices_done_running.clear()
@@ -180,7 +205,6 @@ class Server():
 
         # Define loss function
         criterion = torch.nn.CrossEntropyLoss()
-
         # Disable gradient calculation for testing (increases efficiency)
         with torch.no_grad():
             for inputs, labels in test_loader:
