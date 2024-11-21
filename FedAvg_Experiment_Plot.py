@@ -126,5 +126,5 @@ def plot_accuracies(is_iid, configurations=configurations):
     
     plt.show()
 
-run_experiment(num_rounds=3, is_iid=is_iid, configurations=configurations)
+run_experiment(num_rounds=1001, is_iid=is_iid, configurations=configurations)
 plot_accuracies(is_iid, configurations = configurations)

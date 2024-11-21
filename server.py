@@ -103,7 +103,7 @@ class Server():
         while not self.convergence_criteria():
             print("\n\n########################################################################\n", end="")
             communication_round = self.total_rounds - self.num_rounds
-            if communication_round % 2 == 0:
+            if communication_round % 200 == 0:
               ##Save test_accuracies
               # Ensure the folder exists
               folder_path = "saved_info"
