@@ -25,6 +25,7 @@ def split_indices(num_samples, val_ratio=0.2):
 # Create IID Split
 def create_iid_split(data, num_clients=100):
     num_samples = len(data)
+    np.random.seed(42)
     indices = np.random.permutation(num_samples)
     client_data = np.array_split(indices, num_clients)
 
