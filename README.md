@@ -5,6 +5,7 @@ This project explores challenges in federated learning (FL), specifically the **
 We evaluate our method using a custom Convolutional Neural Network (CNN) trained on MNIST, where both IID and non-IID splits are simulated, and clustered training is applied across groups.
 
 The Research Paper: [FedEx: An Exploration of Clustering Clients in Federated Learning](https://github.com/Aarya-Kul/FedEx/blob/main/FedEx_Research_Paper.pdf)
+
 ---
 
 ## 💡 Motivation
